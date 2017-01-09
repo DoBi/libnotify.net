@@ -11,7 +11,7 @@ namespace Notify
         /// <summary>
         /// The pointer to this notification
         /// </summary>
-        private IntPtr _notification;
+        protected IntPtr _notification;
         
         /// <summary>
         /// The title of this notification
@@ -42,7 +42,7 @@ namespace Notify
         /// </summary>
         /// <param name="title">The title</param>
         /// <param name="body">The body</param>
-        public Notification(String title, String body) : this(title, body, 3000) 
+        public Notification(String title, String body) : this(title, body, NativeMethods.NOTIFY_EXPIRES_DEFAULT) 
         { }
         
         /// <summary>
@@ -70,6 +70,16 @@ namespace Notify
             {
                 throw new Exception("There was an error while showing the notification!");
             }
+        }
+        
+        public void Close() 
+        {
+            IntPtr error = IntPtr.Zero;
+            if (!NativeMethods.notify_notification_close(_notification, out error)) 
+            {
+                throw new Exception("There was an error while closing the notification!");
+            }
+            
         }
     }
 }

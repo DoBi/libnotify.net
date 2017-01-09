@@ -253,3 +253,6 @@ paket-files/
 
 # Visual Studio Code
 .vscode
+
+c/*.so
+c/*.a

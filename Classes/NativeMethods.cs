@@ -9,27 +9,99 @@ namespace Notify
     internal static class NativeMethods
     {
         /// <summary>
-        /// Initialized libnotify. This must be called before any other functions.
+        /// The default expiration time on a notification.
         /// </summary>
-        /// <param name="appName">The name of the application initializing libnotify.</param>
-        /// <returns>True if successful or false on error</returns>
-        [DllImport("libnotify.so.4", CharSet = CharSet.Ansi)]
-        internal static extern bool notify_init([MarshalAs(UnmanagedType.LPStr)] string appName);
+        internal const int NOTIFY_EXPIRES_DEFAULT = -1;
         
         /// <summary>
-        /// Uninitialized libnotify.
-        /// This should be called when the program no longer needs libnotify for the rest of its lifecycle, typically just before exitting.
+        /// The notification never expires. It stays open until closed by the calling API or the user.
         /// </summary>
-        [DllImport("libnotify.so.4")]
-        internal static extern void notify_uninit();
+        internal const int NOTIFY_EXPIRES_NEVER = 0;
+        
+        /// <summary>
+        /// The urgency level of the notification.
+        /// </summary>
+        internal enum NotifyUrgency
+        {
+            /// <summary>
+            /// Low urgency. Used for unimportant notifications.
+            /// </summary>
+            NOTIFY_URGENCY_LOW,
+            /// <summary>
+            /// Normal urgency. Used for most standard notifications.
+            /// </summary>
+            NOTIFY_URGENCY_NORMAL,
+            /// <summary>
+            /// Critical urgency. Used for very important notifications.
+            /// </summary>
+            NOTIFY_URGENCY_CRITICAL
+        }
+        
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct NotifyNotificationPrivate
+        {
+            public uint id;
+            public IntPtr app_name;
+            public IntPtr summary;
+            public IntPtr body;
+            public IntPtr icon_name;
+            public int timeout;
+        }
+        
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void NotifyActionCallback(IntPtr notification, string action, IntPtr userData);
+        
+        #region C functions
         
         /// <summary>
         /// Gets the application name registered.
         /// </summary>
         /// <returns>The registered application name, passed to <see cref="notify_init"/>.</returns>
-        [DllImport("libnotify.so.4", CharSet = CharSet.Ansi)]
+        [DllImport("libnotify.so.4", CallingConvention = CallingConvention.Cdecl)]
         [return: MarshalAs(UnmanagedType.LPStr)]
         internal static extern string notify_get_app_name();
+        
+        /// <summary>
+        /// Initialized libnotify. This must be called before any other functions.
+        /// </summary>
+        /// <param name="appName">The name of the application initializing libnotify.</param>
+        /// <returns>True if successful or false on error</returns>
+        [DllImport("libnotify.so.4", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern bool notify_init([MarshalAs(UnmanagedType.LPStr)] string appName);
+        
+        /// <summary>
+        /// Gets whether or not libnotify is initialized.
+        /// </summary>
+        /// <returns>True if libnotify is initialized, or false otherwise.</returns>
+        [DllImport("libnotify.so.4", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern bool notify_is_initted();
+        
+        /*
+        [DllImport("libnotify.so.4", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void notify_notification_add_action(IntPtr notification,
+                                                                   string action,
+                                                                   string label, 
+                                                                   NotifyActionCallback callback, 
+                                                                   IntPtr userData, 
+                                                                   Delegate freeFunc);
+        */
+                                                                   
+        /// <summary>
+        /// Synchronously tells the notification server to hide the notification on the screen.
+        /// </summary>
+        /// <param name="notification">The notification.</param>
+        /// <param name="error">The returned error information.</param>
+        /// <returns>True on success, or false on error with error filled in</returns>
+        [DllImport("libnotify.so.4", CharSet = CharSet.Ansi)]
+        internal static extern bool notify_notification_close(IntPtr notification, out IntPtr error);
+        
+        /// <summary>
+        /// Get a pointer to the NotifyNotificationPrivate-struct from the NotifyNotification pointer
+        /// </summary>
+        /// <param name="notification">A pointer to a NotifyNotification struct</param>
+        /// <returns>A pointer to a NotifyNotificationPrivate struct</returns>
+        [DllImport("libnotify_net_wrapper.so", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern IntPtr notify_notification_get(IntPtr notification);
         
         /// <summary>
         /// Creates a new NotifyNotification. The summary text is required, but all other parameters are optional.
@@ -38,10 +110,20 @@ namespace Notify
         /// <param name="body">The optional body text.</param>
         /// <param name="icon">The optional icon theme icon name or filename.</param>
         /// <returns>The new NotifyNotification.</returns>
-        [DllImport("libnotify.so.4", CharSet = CharSet.Ansi)]
+        [DllImport("libnotify.so.4", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         internal static extern IntPtr notify_notification_new([MarshalAs(UnmanagedType.LPStr)] string summary,
                                                               [MarshalAs(UnmanagedType.LPStr)] string body,
                                                               [MarshalAs(UnmanagedType.LPStr)] string icon);
+                                                              
+        /// <summary>
+        /// Sets the timeout of the notification. 
+        /// To set the default time, pass NOTIFY_EXPIRES_DEFAULT as timeout. To set the notification to never expire, pass NOTIFY_EXPIRES_NEVER.
+        /// Note that the timeout may be ignored by the server.
+        /// </summary>
+        /// <param name="notification">The notification</param>
+        /// <param name="timeout">The timeout in milliseconds.</param>
+        [DllImport("libnotify.so.4", CharSet = CharSet.Ansi)]
+        internal static extern void notify_notification_set_timeout(IntPtr notification, int timeout);
         
         /// <summary>
         /// Tells the notification server to display the notification on the screen.
@@ -53,13 +135,26 @@ namespace Notify
         internal static extern bool notify_notification_show(IntPtr notification, out IntPtr error);
         
         /// <summary>
-        /// Sets the timeout of the notification. 
-        /// To set the default time, pass NOTIFY_EXPIRES_DEFAULT as timeout. To set the notification to never expire, pass NOTIFY_EXPIRES_NEVER.
-        /// Note that the timeout may be ignored by the server.
+        /// Updates the notification text and icon. 
+        /// This won't send the update out and display it on the screen. For that, you will need to call <see cref="notify_notification_show" />.
         /// </summary>
-        /// <param name="notification">The notification</param>
-        /// <param name="timeout">The timeout in milliseconds.</param>
-        [DllImport("libnotify.so.4", CharSet = CharSet.Ansi)]
-        internal static extern void notify_notification_set_timeout(IntPtr notification, int timeout);
+        /// <param name="notification">The notification to update.</param>
+        /// <param name="summary">The new required summary text.</param>
+        /// <param name="body">The optional body text.</param>
+        /// <param name="icon">The optional icon theme, icon name or filename.</param>
+        /// <returns></returns>
+        [DllImport("libnotify.so.4", CallingConvention = CallingConvention.Cdecl)]
+        internal static extern bool notify_notification_update(IntPtr notification, 
+                                                              [MarshalAs(UnmanagedType.LPStr)] string summary,
+                                                              [MarshalAs(UnmanagedType.LPStr)] string body,
+                                                              [MarshalAs(UnmanagedType.LPStr)] string icon);
+        /// <summary>
+        /// Uninitialized libnotify.
+        /// This should be called when the program no longer needs libnotify for the rest of its lifecycle, typically just before exitting.
+        /// </summary>
+        [DllImport("libnotify.so.4")]
+        internal static extern void notify_uninit();
+        
+        #endregion C functions
     }
 }
