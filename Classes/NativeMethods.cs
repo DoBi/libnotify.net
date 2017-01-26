@@ -37,14 +37,35 @@ namespace Notify
             NOTIFY_URGENCY_CRITICAL
         }
         
+        /// <summary>
+        /// The real NotifyNotification struct
+        /// </summary>
         [StructLayout(LayoutKind.Sequential)]
         internal struct NotifyNotificationPrivate
         {
+            /// <summary>
+            /// The notification id
+            /// </summary>
             public uint id;
+            /// <summary>
+            /// The AppName
+            /// </summary>
             public IntPtr app_name;
+            /// <summary>
+            /// The summary
+            /// </summary>
             public IntPtr summary;
+            /// <summary>
+            /// The body
+            /// </summary>
             public IntPtr body;
+            /// <summary>
+            /// The icon name
+            /// </summary>
             public IntPtr icon_name;
+            /// <summary>
+            /// The timeout
+            /// </summary>
             public int timeout;
         }
         
@@ -114,7 +135,26 @@ namespace Notify
         internal static extern IntPtr notify_notification_new([MarshalAs(UnmanagedType.LPStr)] string summary,
                                                               [MarshalAs(UnmanagedType.LPStr)] string body,
                                                               [MarshalAs(UnmanagedType.LPStr)] string icon);
+        
+        /// <summary>
+        /// Sets the application name for the notification.
+        /// 
+        /// If this function is not called or if app_name is NULL,
+        /// the application name will be set from the value used in <see cref="notify_init()" /> or overridden with <see cref="notify_set_app_name()" />.
+        /// </summary>
+        /// <param name="notification">The notification</param>
+        /// <param name="appName">The localised application name</param>
+        [DllImport("libnotify.so.4", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void notify_notification_set_app_name(IntPtr notification, [MarshalAs(UnmanagedType.LPStr)] string appName);
                                                               
+        /// <summary>
+        /// Sets the urgency level of this notification.
+        /// </summary>
+        /// <param name="notification">The notification</param>
+        /// <param name="urgency">The urgency level.</param>
+        [DllImport("libnotify.so.4", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void notify_notification_set_urgency(IntPtr notification, NotifyUrgency urgency);
+        
         /// <summary>
         /// Sets the timeout of the notification. 
         /// To set the default time, pass NOTIFY_EXPIRES_DEFAULT as timeout. To set the notification to never expire, pass NOTIFY_EXPIRES_NEVER.

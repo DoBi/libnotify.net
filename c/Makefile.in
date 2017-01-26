@@ -1,0 +1,21 @@
+$CC = @CC@
+CFLAGS= @CFLAGS@ @libnotify_CFLAGS@ @libnotify_LIBS@ -fPIC
+PREFIX = @prefix@
+LIBDIR = @libdir@
+DESTDIR =
+
+all: libnotify_net_wrapper.so
+
+libnotify_net_wrapper.a: notification.c
+	$(CC) -o libnotify_net_wrapper.a -c notification.c $(CFLAGS)
+
+libnotify_net_wrapper.so: libnotify_net_wrapper.a
+	$(CC) -shared -o libnotify_net_wrapper.so libnotify_net_wrapper.a
+
+clean:
+	rm -f libnotify_net_wrapper.so libnotify_net_wrapper.a
+
+install: all
+	mkdir -p ${DESTDIR}/${PREFIX}${LIBDIR}/
+	cp -v libnotify_net_wrapper.a ${DESTDIR}/${PREFIX}${LIBDIR}/
+	cp -v libnotify_net_wrapper.so ${DESTDIR}/${PREFIX}${LIBDIR}/

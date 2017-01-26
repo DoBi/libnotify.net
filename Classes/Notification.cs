@@ -8,10 +8,21 @@ namespace Notify
     /// </summary>
     public class Notification 
     {
+        private sealed class Destructor
+        {
+            ~Destructor()
+            {
+                NativeMethods.notify_uninit();
+            }
+        }
+
+        private static readonly Destructor Finalise = new Destructor();
+
+        protected static String AppName;
         /// <summary>
         /// The pointer to this notification
         /// </summary>
-        protected IntPtr _notification;
+        private readonly IntPtr _notification;
         
         /// <summary>
         /// The title of this notification
@@ -22,6 +33,10 @@ namespace Notify
         /// </summary>
         public String Body { get; }
         /// <summary>
+        /// The icon of this notification
+        /// </summary>
+        public String Icon { get; }
+        /// <summary>
         /// The timeout of this notification in milliseconds
         /// </summary>
         public Int32 Timeout { get; set; }
@@ -31,7 +46,9 @@ namespace Notify
         /// </summary>
         static Notification() 
         {
-            if (!NativeMethods.notify_init(Assembly.GetEntryAssembly().GetName().Name))
+            AppName = Assembly.GetEntryAssembly().GetName().Name;
+            
+            if (!NativeMethods.notify_init(AppName))
             {
                 throw new Exception("There was an error while initializing libnotify!");
             }
@@ -51,12 +68,34 @@ namespace Notify
         /// <param name="title">The title</param>
         /// <param name="body">The body</param>
         /// <param name="timeout">The timeout in milliseconds</param>
-        public Notification(String title, String body, Int32 timeout) {
+        public Notification(String title, String body, Int32 timeout) : this(title, body, timeout, null) 
+        { }
+        
+        /// <summary>
+        /// Creates a new notification with the given title, body and timeout
+        /// </summary>
+        /// <param name="title">The title</param>
+        /// <param name="body">The body</param>
+        /// <param name="icon">The icon file</param>
+        public Notification(String title, String body, String icon) : this(title, body, NativeMethods.NOTIFY_EXPIRES_DEFAULT, icon)
+        { }
+        
+        /// <summary>
+        /// Creates a new notification with the given title, body and timeout
+        /// </summary>
+        /// <param name="title">The title</param>
+        /// <param name="body">The body</param>
+        /// <param name="timeout">The timeout in milliseconds</param>
+        /// <param name="icon">The icon file</param>
+        public Notification(String title, String body, Int32 timeout, String icon)
+        {   
             this.Title = title;
             this.Body = body;
             this.Timeout = timeout;
+            this.Icon = icon;
             
-            _notification = NativeMethods.notify_notification_new(Title, Body, null);
+            _notification = NativeMethods.notify_notification_new(Title, Body, icon);
+            NativeMethods.notify_notification_set_app_name(this._notification, AppName);
         }
         
         /// <summary>
@@ -65,7 +104,7 @@ namespace Notify
         public void Show()
         {
             NativeMethods.notify_notification_set_timeout(_notification, Timeout);
-            IntPtr error = IntPtr.Zero;
+            IntPtr error;
             if (!NativeMethods.notify_notification_show(_notification, out error)) 
             {
                 throw new Exception("There was an error while showing the notification!");
@@ -74,7 +113,7 @@ namespace Notify
         
         public void Close() 
         {
-            IntPtr error = IntPtr.Zero;
+            IntPtr error;
             if (!NativeMethods.notify_notification_close(_notification, out error)) 
             {
                 throw new Exception("There was an error while closing the notification!");
