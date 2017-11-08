@@ -1,0 +1,11 @@
+language: csharp
+dist: trusty
+sudo: required
+mono: none
+dotnet: 2.0.0
+
+script:
+  - dotnet restore
+  - dotnet build -c Release
+  - dotnet publish -c Release
+  - dotnet pack -c Release
