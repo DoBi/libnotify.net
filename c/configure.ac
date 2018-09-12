@@ -8,6 +8,15 @@ AC_CONFIG_SRCDIR([notification.h])
 # Checks for programs.
 AC_PROG_CC
 
+dnl Testing presence of pkg-config
+AC_MSG_CHECKING([pkg-config m4 macros])
+if test m4_ifdef([PKG_CHECK_MODULES], [yes], [no]) == yes; then
+	AC_MSG_RESULT([yes]);
+else
+	AC_MSG_RESULT([no]);
+	AC_MSG_ERROR([pkg-config is required. See pkg-config.freedesktop.org])
+fi
+
 # Checks for libraries.
 PKG_CHECK_MODULES([GLIB], [glib-2.0])
 PKG_CHECK_MODULES([libnotify], [libnotify])
